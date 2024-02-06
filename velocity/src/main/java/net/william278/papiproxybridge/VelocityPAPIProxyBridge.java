@@ -24,12 +24,14 @@ import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.messages.LegacyChannelIdentifier;
@@ -73,7 +75,14 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
 
     private void loadOnlineUsers() {
         velocityUsers.clear();
-        server.getAllPlayers().forEach(player -> velocityUsers.add(VelocityUser.adapt(player)));
+        server.getAllPlayers().forEach(this::loadPlayer);
+    }
+
+    private void loadPlayer(@NotNull Player player) {
+        final VelocityUser user = VelocityUser.adapt(player);
+        user.setJustSwitchedServer(true);
+        velocityUsers.add(user);
+        server.getScheduler().buildTask(this, () -> user.setJustSwitchedServer(false)).delay(2000, TimeUnit.MILLISECONDS).schedule();
     }
 
     @Subscribe
@@ -115,8 +124,8 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
     }
 
     @Subscribe
-    public void onConnect(PostLoginEvent event) {
-        velocityUsers.add(VelocityUser.adapt(event.getPlayer()));
+    public void onConnect(LoginEvent event) {
+        loadPlayer(event.getPlayer());
     }
 
     @Subscribe

@@ -28,11 +28,13 @@ import net.william278.papiproxybridge.user.OnlineUser;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 /**
@@ -59,6 +61,7 @@ public final class PlaceholderAPI {
     private final ConcurrentMap<UUID, ExpiringMap<String, Component>> componentCache;
     private long requestTimeout = 1000;
     private long cacheExpiry = 30000;
+    private int retryTimes = 3;
 
     /**
      * <b>Internal only</b> - Create a new instance of the API
@@ -120,6 +123,11 @@ public final class PlaceholderAPI {
      * @since 1.2
      */
     public CompletableFuture<String> formatPlaceholders(@NotNull String text, @NotNull OnlineUser requester, @NotNull UUID formatFor) {
+        return formatPlaceholders(text, requester, formatFor, retryTimes);
+    }
+
+    public CompletableFuture<String> formatPlaceholders(@NotNull String text, @NotNull OnlineUser requester,
+                                                        @NotNull UUID formatFor, int times) {
         if (!requester.isConnected()) {
             return CompletableFuture.completedFuture(text);
         }
@@ -136,21 +144,29 @@ public final class PlaceholderAPI {
                 })
                 .orTimeout(requestTimeout, TimeUnit.MILLISECONDS)
                 .exceptionally(throwable -> {
-                    if (requester.isConnected()) {
-                        plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername());
+                    if (!requester.isConnected()) {
+                        return text;
+                    }
+                    if (times > 0) {
+                        return formatPlaceholders(text, requester, formatFor, times - 1).join();
+                    }
+                    if (Arrays.stream(throwable.getSuppressed()).anyMatch(TimeoutException.class::isInstance)) {
+                        plugin.log(Level.WARNING, "Timed out formatting placeholders for " + requester.getUsername() + " timeout: " + requestTimeout + "ms");
+                    } else {
+                        plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername(), throwable);
                     }
                     return text;
                 });
     }
 
-    /**
-     * Format the text with the placeholders of the player
-     *
-     * @param text   The text to format
-     * @param player The player to format the text for
-     * @return A future that will supply the formatted text
-     * @since 1.0
-     */
+        /**
+         * Format the text with the placeholders of the player
+         *
+         * @param text   The text to format
+         * @param player The player to format the text for
+         * @return A future that will supply the formatted text
+         * @since 1.0
+         */
     public CompletableFuture<String> formatPlaceholders(@NotNull String text, @NotNull OnlineUser player) {
         return formatPlaceholders(text, player, player.getUniqueId());
     }

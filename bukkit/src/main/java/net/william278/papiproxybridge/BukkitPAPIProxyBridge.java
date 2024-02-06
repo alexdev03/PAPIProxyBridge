@@ -141,7 +141,7 @@ public class BukkitPAPIProxyBridge extends JavaPlugin implements PAPIProxyBridge
         users.add(user);
         getServer().getScheduler().runTaskLater(this,
                 () -> user.setJustSwitchedServer(false),
-                10);
+                20);
     }
 
     @EventHandler
