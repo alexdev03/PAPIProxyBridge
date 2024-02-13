@@ -19,6 +19,8 @@
 
 package net.william278.papiproxybridge;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import net.william278.papiproxybridge.user.OnlineUser;
@@ -58,7 +60,7 @@ public interface ProxyPAPIProxyBridge extends PAPIProxyBridge {
                 .filter(user -> user instanceof ProxyUser)
                 .map(user -> (ProxyUser) user)
                 .filter(OnlineUser::isConnected)
-                .collect(() -> Multimaps.newListMultimap(new ConcurrentHashMap<>(), CopyOnWriteArrayList::new),
+                .collect(() -> Multimaps.newListMultimap(Maps.newConcurrentMap(), Lists::newCopyOnWriteArrayList),
                         (map, user) -> map.put(user.getServerName(), createRequest(HANDSHAKE_PLACEHOLDER, user, user.getUniqueId(), false, requestTimeout)
                                 .thenApply(message -> message.equals(HANDSHAKE_RESPONSE))),
                         Multimap::putAll);

@@ -31,10 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 
 /**
@@ -126,7 +123,7 @@ public final class PlaceholderAPI {
         return formatPlaceholders(text, requester, formatFor, retryTimes);
     }
 
-    public CompletableFuture<String> formatPlaceholders(@NotNull String text, @NotNull OnlineUser requester,
+    private CompletableFuture<String> formatPlaceholders(@NotNull String text, @NotNull OnlineUser requester,
                                                         @NotNull UUID formatFor, int times) {
         if (!requester.isConnected()) {
             return CompletableFuture.completedFuture(text);
@@ -148,7 +145,12 @@ public final class PlaceholderAPI {
                         return text;
                     }
                     if (times > 0) {
-                        return formatPlaceholders(text, requester, formatFor, times - 1).join();
+                        try {
+                            return formatPlaceholders(text, requester, formatFor, times - 1).get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername(), e);
+                            return text;
+                        }
                     }
                     if (Arrays.stream(throwable.getSuppressed()).anyMatch(TimeoutException.class::isInstance)) {
                         plugin.log(Level.WARNING, "Timed out formatting placeholders for " + requester.getUsername() + " timeout: " + requestTimeout + "ms");
@@ -216,6 +218,10 @@ public final class PlaceholderAPI {
      * @since 1.4
      */
     public CompletableFuture<Component> formatComponentPlaceholders(@NotNull String text, @NotNull OnlineUser requester, @NotNull UUID formatFor) {
+        return formatComponentPlaceholders(text, requester, formatFor, retryTimes);
+    }
+
+    private CompletableFuture<Component> formatComponentPlaceholders(@NotNull String text, @NotNull OnlineUser requester, @NotNull UUID formatFor, int times) {
         if (!requester.isConnected()) {
             return CompletableFuture.completedFuture(Component.text(text));
         }
@@ -233,8 +239,21 @@ public final class PlaceholderAPI {
                 })
                 .orTimeout(requestTimeout, TimeUnit.MILLISECONDS)
                 .exceptionally(throwable -> {
-                    if (requester.isConnected()) {
-                        plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername());
+                    if (!requester.isConnected()) {
+                        return Component.text(text);
+                    }
+                    if (times > 0) {
+                        try {
+                            return formatComponentPlaceholders(text, requester, formatFor, times - 1).get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername(), e);
+                            return Component.text(text);
+                        }
+                    }
+                    if (Arrays.stream(throwable.getSuppressed()).anyMatch(TimeoutException.class::isInstance)) {
+                        plugin.log(Level.WARNING, "Timed out formatting placeholders for " + requester.getUsername() + " timeout: " + requestTimeout + "ms");
+                    } else {
+                        plugin.log(Level.WARNING, "Failed to format placeholders for " + requester.getUsername(), throwable);
                     }
                     return Component.text(text);
                 });
@@ -349,5 +368,31 @@ public final class PlaceholderAPI {
      */
     public long getCacheExpiry() {
         return cacheExpiry;
+    }
+
+    /**
+     * Set the number of times to retry formatting placeholders if the request times out
+     * <p>
+     * The default value is 3
+     *
+     * @param retryTimes The number of times to retry formatting placeholders if the request times out
+     * @throws IllegalArgumentException If the number of retries is negative
+     * @since 1.6
+     */
+    public void setRetryTimes(int retryTimes) {
+        if (retryTimes < 0) {
+            throw new IllegalArgumentException("Retry times cannot be negative");
+        }
+        this.retryTimes = retryTimes;
+    }
+
+    /**
+     * Returns the number of times to retry formatting placeholders if the request times out
+     *
+     * @return The number of times to retry formatting placeholders if the request times out
+     * @since 1.6
+     */
+    public int getRetryTimes() {
+        return retryTimes;
     }
 }

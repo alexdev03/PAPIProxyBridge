@@ -26,9 +26,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
-import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
-import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
@@ -51,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 @Plugin(id = "papiproxybridge")
+@SuppressWarnings("unused")
 public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
 
     private final ConcurrentMap<UUID, CompletableFuture<String>> requests;
@@ -70,7 +69,6 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
         this.channelIdentifier = new LegacyChannelIdentifier(getChannel());
         this.componentChannelIdentifier = new LegacyChannelIdentifier(getComponentChannel());
         this.velocityUsers = Lists.newCopyOnWriteArrayList();
-        this.loadOnlineUsers();
     }
 
     private void loadOnlineUsers() {
@@ -88,6 +86,7 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
     @Subscribe
     public void onProxyInitialization(@NotNull ProxyInitializeEvent event) {
         // Register the plugin message channel
+        this.loadOnlineUsers();
         server.getChannelRegistrar().register(this.channelIdentifier);
         server.getChannelRegistrar().register(this.componentChannelIdentifier);
 
@@ -97,7 +96,7 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
         // Setup metrics
         metricsFactory.make(this, 17878);
 
-        logger.info("PAPIProxyBridge (" + server.getVersion().getName() + ") has been enabled!");
+        logger.info("PAPIProxyBridge ({}) has been enabled!", server.getVersion().getName());
     }
 
     @Subscribe
@@ -151,19 +150,16 @@ public class VelocityPAPIProxyBridge implements ProxyPAPIProxyBridge {
     @Override
     @NotNull
     public List<VelocityUser> getOnlineUsers() {
-//        return server.getAllPlayers().stream().map(VelocityUser::adapt).toList();
         return velocityUsers;
     }
 
     @Override
     public Optional<OnlineUser> findPlayer(@NotNull UUID uuid) {
-        //return server.getPlayer(uuid).map(VelocityUser::adapt);
         return velocityUsers.stream().filter(user -> user.getUniqueId().equals(uuid)).map(v -> (OnlineUser) v).findFirst();
     }
 
     @Override
     public Optional<OnlineUser> findPlayer(@NotNull String username) {
-//        return server.getPlayer(username).map(VelocityUser::adapt);
         return velocityUsers.stream().filter(user -> user.getUsername().equals(username)).map(v -> (OnlineUser) v).findFirst();
     }
 }
