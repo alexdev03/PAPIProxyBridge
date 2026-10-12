@@ -25,6 +25,15 @@ jobs:
           distribution: 'temurin'
       - name: 'Setup Gradle Wrapper 🏗️'
         uses: gradle/actions/setup-gradle@v4
+      - name: Setup Python for publication checks
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Fabric publication coverage
+        run: |
+          python3 -m pip install -r scripts/requirements.txt
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/check_fabric_publication.py
       - name: 'Build 🛎️'
         run: |
           ./gradlew clean build publish
@@ -43,8 +52,8 @@ jobs:
       - name: 'Set Version Variable 📝'
         run: |
           echo "version_name=${{steps.fetch-version.outputs.VERSION_NAME}}" >> $GITHUB_ENV
-      - name: Verify Fabric 26.3 artifact
-        run: test -f target/PAPIProxyBridge-Fabric-*+mc.26.3.jar
+      - name: Verify all Fabric artifacts
+        run: python3 scripts/check_fabric_publication.py --artifacts
       - name: 'Publish to William278.net 🚀'
         uses: WiIIiam278/bones-publish-action@v1
         with:
@@ -60,11 +69,19 @@ jobs:
             fabric-1.21.4
             fabric-1.21.5
             fabric-1.21.8
+            fabric-1.21.10
+            fabric-1.21.11
+            fabric-26.1.2
+            fabric-26.2
             fabric-26.3
             velocity
             bungeecord
           distro-groups: |
             spigot
+            fabric
+            fabric
+            fabric
+            fabric
             fabric
             fabric
             fabric
@@ -80,6 +97,10 @@ jobs:
             Fabric 1.21.4
             Fabric 1.21.5
             Fabric 1.21.8
+            Fabric 1.21.10
+            Fabric 1.21.11
+            Fabric 26.1.2
+            Fabric 26.2
             Fabric 26.3
             Velocity
             BungeeCord
@@ -90,6 +111,10 @@ jobs:
             target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.4.jar
             target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.5.jar
             target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.8.jar
+            target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.10.jar
+            target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.11.jar
+            target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.26.1.2.jar
+            target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.26.2.jar
             target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.26.3.jar
             target/PAPIProxyBridge-Velocity-${{ env.version_name }}.jar
             target/PAPIProxyBridge-Bungee-${{ env.version_name }}.jar
@@ -233,6 +258,86 @@ jobs:
           game-versions: |
             1.21.8
           java: 21
+      - name: 'Fabric 1.21.10: Publish to Modrinth'
+        uses: WiIIiam278/mc-publish@hangar
+        if: success()
+        with:
+          modrinth-id: bEIUEGTX
+          modrinth-featured: false
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-dependencies: |
+            placeholder-api | suggests | *
+          files-primary: target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.10.jar
+          name: PAPIProxyBridge (Fabric) v${{ env.version_name }}
+          version: ${{ env.version_name }}
+          version-type: alpha
+          changelog: ${{ github.event.head_commit.message }}
+          loaders: |
+            fabric
+          game-versions: |
+            1.21.10
+          java: 21
+          fail-mode: fail
+      - name: 'Fabric 1.21.11: Publish to Modrinth'
+        uses: WiIIiam278/mc-publish@hangar
+        if: success()
+        with:
+          modrinth-id: bEIUEGTX
+          modrinth-featured: false
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-dependencies: |
+            placeholder-api | suggests | *
+          files-primary: target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.1.21.11.jar
+          name: PAPIProxyBridge (Fabric) v${{ env.version_name }}
+          version: ${{ env.version_name }}
+          version-type: alpha
+          changelog: ${{ github.event.head_commit.message }}
+          loaders: |
+            fabric
+          game-versions: |
+            1.21.11
+          java: 21
+          fail-mode: fail
+      - name: 'Fabric 26.1.2: Publish to Modrinth'
+        uses: WiIIiam278/mc-publish@hangar
+        if: success()
+        with:
+          modrinth-id: bEIUEGTX
+          modrinth-featured: false
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-dependencies: |
+            placeholder-api | suggests | *
+          files-primary: target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.26.1.2.jar
+          name: PAPIProxyBridge (Fabric) v${{ env.version_name }}
+          version: ${{ env.version_name }}
+          version-type: alpha
+          changelog: ${{ github.event.head_commit.message }}
+          loaders: |
+            fabric
+          game-versions: |
+            26.1.2
+          java: 25
+          fail-mode: fail
+      - name: 'Fabric 26.2: Publish to Modrinth'
+        uses: WiIIiam278/mc-publish@hangar
+        if: success()
+        with:
+          modrinth-id: bEIUEGTX
+          modrinth-featured: false
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-dependencies: |
+            placeholder-api | suggests | *
+          files-primary: target/PAPIProxyBridge-Fabric-${{ env.version_name }}+mc.26.2.jar
+          name: PAPIProxyBridge (Fabric) v${{ env.version_name }}
+          version: ${{ env.version_name }}
+          version-type: alpha
+          changelog: ${{ github.event.head_commit.message }}
+          loaders: |
+            fabric
+          game-versions: |
+            26.2
+          java: 25
+          fail-mode: fail
       - name: 'Fabric 26.3: Publish to Modrinth'
         uses: WiIIiam278/mc-publish@hangar
         if: success()
